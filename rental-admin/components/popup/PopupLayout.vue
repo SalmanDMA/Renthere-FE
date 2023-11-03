@@ -4,12 +4,11 @@
     class="fixed top-0 left-0 w-full h-full grid place-items-center bg-black/30 z-50 cursor-pointer py-10 overflow-y-auto"
     @click="closeOverlayOnClickOutside"
   >
-    <div
-      ref="modalContent"
-      class="bg-white py-6 px-4 sm:p-6 rounded-lg w-[280px] sm:w-[600px] cursor-default"
-    >
+    <div ref="modalContent" class="popup" :class="popupClass">
       <!-- Isi Pop-up di sini -->
-      <h2 class="text-xl font-semibold mb-4">{{ modalTitle }}</h2>
+      <h2 v-if="modalTitle" class="text-xl font-semibold mb-4">
+        {{ modalTitle }}
+      </h2>
       <!-- Form untuk menambah/mengedit pengguna -->
       <slot></slot>
     </div>
@@ -22,6 +21,10 @@ export default {
   props: {
     showModal: Boolean,
     modalTitle: {
+      type: String,
+      required: true,
+    },
+    popupClass: {
       type: String,
       required: true,
     },
@@ -39,4 +42,32 @@ export default {
 }
 </script>
 
-<style></style>
+<style scoped>
+.popup {
+  @apply bg-white py-6 px-4 sm:p-6 rounded-lg w-[280px] sm:w-[600px] cursor-default;
+}
+.active {
+  animation: fadein 0.3s ease-in-out forwards;
+}
+
+.deactive {
+  animation: fadeOut 0.3s ease-in-out forwards;
+}
+
+@keyframes fadein {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+@keyframes fadeOut {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+</style>

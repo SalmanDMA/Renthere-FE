@@ -1,4 +1,4 @@
-import { linkBikes, linkCars, linkContact, linkFormData, linkHome, linkServices, linkTestimonials } from "./linkData.js";
+import { linkBikes, linkCars, linkContact, linkRenthere, linkHome, linkServices, linkTestimonials } from "./linkData.js";
 
 const navigationData = [
   {
@@ -14,6 +14,10 @@ const navigationData = [
     to: linkBikes,
   },
   {
+    text: 'Renthere',
+    to: linkRenthere,
+  },
+  {
     text: 'Services',
     to: linkServices,
   },
@@ -25,10 +29,6 @@ const navigationData = [
     text: 'Contact',
     to: linkContact,
   },
-  {
-    text: 'Form Data',
-    to: linkFormData,
-  }
 ];
 
 export default navigationData;

@@ -16,12 +16,16 @@ export const actions = {
           Authorization: this.$auth.getToken('local'),
         },
       });
-      const length = response.data.data.length;
+
+      const filteredTransactions = response.data.data.filter(transaction => transaction.status !== 'completed');
+      const length = filteredTransactions.length;
+
       commit('setLengthTransaction', length);
     } catch (error) {
       console.error(error);
     }
   },
+
 };
 
 export const getters = {

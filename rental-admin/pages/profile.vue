@@ -3,19 +3,49 @@
     <header-layout title="Profile" link="/profile" />
 
     <div
+      v-if="!loading"
       class="p-5 grid place-items-center grid-cols-1 sm:grid-cols-2 gap-7 sm:gap-3 content-container w-full"
     >
       <div
         class="grid place-items-center bg-white p-4 rounded-lg shadow-md w-full sm:w-[312px] md:max-w-sm xl:max-w-lg xl:w-[512px] min-h-[612px] text-center"
       >
-        <div class="flex justify-center mb-4">
-          <img
-            v-if="user.profilePicture"
-            :src="user.profilePicture"
-            alt="User Profile"
-            class="rounded-full w-36 h-36"
-          />
-          <p v-else class="text-gray-600">No profile picture available</p>
+        <div class="flex justify-center mb-4 relative">
+          <div class="flex flex-col gap-2">
+            <label class="text-sm text-gray-600">Max file size 1MB</label>
+            <nuxt-img
+              v-if="user && user.profilePicture"
+              :src="base64Url ? base64Url : user.profilePicture"
+              :alt="user.name"
+              class="rounded-full w-36 h-36 object-cover object-center"
+              :placeholder="[100, 50, 10]"
+              loading="lazy"
+            />
+          </div>
+          <div class="absolute -bottom-4 w-full flex justify-center">
+            <label
+              v-if="base64Url === null"
+              for="imageInput"
+              class="mx-auto cursor-pointer bg-orange-400 p-2 text-2xl text-white rounded-full w-12 h-12 flex items-center justify-center"
+            >
+              <fa :icon="['fas', 'pen-to-square']" />
+            </label>
+            <div
+              v-else
+              class="mx-auto cursor-pointer bg-[#7895CB] p-2 text-2xl text-white rounded-full flex items-center justify-between space-x-4"
+            >
+              <button @click="cancelUpload">
+                <fa :icon="['fas', 'xmark']" />
+              </button>
+              <button @click="upload"><fa :icon="['fas', 'check']" /></button>
+            </div>
+            <input
+              id="imageInput"
+              type="file"
+              accept="image/*"
+              class="hidden"
+              @change="handlePreview"
+            />
+          </div>
         </div>
 
         <div class="mb-4">
@@ -112,27 +142,136 @@
         </div>
       </div>
     </div>
+    <profile-skeleton v-else />
   </main>
 </template>
 
 <script>
+import { mapGetters } from 'vuex'
+import ProfileSkeleton from '../components/skeleton/ProfileSkeleton.vue'
 export default {
+  name: 'Profile',
+  components: { ProfileSkeleton },
   data() {
     return {
-      user: {
-        name: '',
-        email: '',
-        role: '',
-        address: '',
-        phoneNumber: '',
-        profilePicture: '',
-      },
+      loading: false,
+      base64Url: null,
+      previewUrl: null,
     }
+  },
+  computed: {
+    ...mapGetters({
+      user: 'users/getUser',
+    }),
   },
   mounted() {
     this.fetchUsers()
   },
   methods: {
+    handlePreview(event) {
+      const file = event.target.files[0]
+      if (file) {
+        if (file.size > 1000000) {
+          throw new Error('File too large')
+        }
+
+        const reader = new FileReader()
+
+        reader.onload = () => {
+          const image = new Image()
+          image.src = reader.result
+
+          image.onload = () => {
+            const canvas = document.createElement('canvas')
+            const maxDimension = 500
+
+            let width = image.width
+            let height = image.height
+
+            if (width > maxDimension || height > maxDimension) {
+              if (width > height) {
+                height *= maxDimension / width
+                width = maxDimension
+              } else {
+                width *= maxDimension / height
+                height = maxDimension
+              }
+            }
+
+            canvas.width = width
+            canvas.height = height
+
+            const ctx = canvas.getContext('2d')
+            ctx.drawImage(image, 0, 0, width, height)
+
+            const resizedBase64Url = canvas.toDataURL('image/jpg')
+
+            this.base64Url = resizedBase64Url
+          }
+        }
+        reader.readAsDataURL(file)
+      }
+    },
+    async upload() {
+      try {
+        try {
+          const res = await this.$axios.post('upload/images', {
+            image: this.base64Url,
+          })
+          this.previewUrl = res.data.data.url
+        } catch (error) {
+          this.base64Url = null
+          this.previewUrl = ''
+          this.$store.commit('toast/setToast', {
+            message: error,
+            show: true,
+            backgroundColor: 'bg-red-500',
+          })
+          setTimeout(() => {
+            this.$store.commit('toast/closeToast')
+          }, 3000)
+        }
+        if (this.base64Url && this.previewUrl) {
+          await this.$axios.put('/me', {
+            profilePicture: this.previewUrl,
+          })
+          this.user.profilePicture = this.previewUrl
+          this.base64Url = null
+          this.previewUrl = ''
+          this.$store.commit('toast/setToast', {
+            message: 'Upload Success',
+            show: true,
+            backgroundColor: 'bg-green-500',
+          })
+          setTimeout(() => {
+            this.$store.commit('toast/closeToast')
+          }, 3000)
+        }
+      } catch (error) {
+        this.base64Url = null
+        this.previewUrl = ''
+        this.$store.commit('toast/setToast', {
+          message: error,
+          show: true,
+          backgroundColor: 'bg-red-500',
+        })
+        setTimeout(() => {
+          this.$store.commit('toast/closeToast')
+        }, 3000)
+      }
+    },
+    cancelUpload() {
+      this.base64Url = null
+      this.previewUrl = ''
+      this.$store.commit('toast/setToast', {
+        message: 'Upload Cancelled',
+        show: true,
+        backgroundColor: 'bg-red-500',
+      })
+      setTimeout(() => {
+        this.$store.commit('toast/closeToast')
+      }, 3000)
+    },
     saveProfile() {
       this.$axios
         .put('/me', this.user, {
@@ -163,15 +302,13 @@ export default {
         })
     },
     async fetchUsers() {
+      this.loading = true
       try {
-        const response = await this.$axios.get('/me', {
-          headers: {
-            Authorization: this.$auth.getToken('local'),
-          },
-        })
-        this.user = response.data.data
+        await this.$store.dispatch('users/fetchMe')
       } catch (error) {
         console.error('An error occurred during fetching users', error)
+      } finally {
+        this.loading = false
       }
     },
   },

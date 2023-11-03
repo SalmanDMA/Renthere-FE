@@ -1,5 +1,5 @@
 <template>
-  <section class="min-h-screen bg-[#f5f5f5] pt-[94px] pb-10 px-10">
+  <main class="min-h-screen bg-[#f5f5f5] pt-[94px] pb-10 px-10">
     <h1 class="text-3xl font-semibold text-[#333] mb-12 text-center">
       Our Services
     </h1>
@@ -97,11 +97,18 @@
         </p>
       </div>
     </div>
-  </section>
+  </main>
 </template>
 
 <script>
-export default {}
+export default {
+  name: 'Services',
+  head() {
+    return {
+      title: 'Services - RentHere',
+    }
+  },
+}
 </script>
 
 <style></style>

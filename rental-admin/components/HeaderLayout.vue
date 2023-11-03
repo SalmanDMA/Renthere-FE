@@ -26,7 +26,8 @@
         class="flex items-center gap-2 relative cursor-pointer"
         @click="toggleMenu"
       >
-        <img
+        <nuxt-img
+          v-if="!loading && user && user.profilePicture"
           :src="
             user?.profilePicture
               ? user.profilePicture
@@ -34,8 +35,21 @@
           "
           class="w-12 h-12 rounded-full shadow-lg"
           alt="profile"
+          :placeholder="[100, 50, 10]"
+          loading="lazy"
+          @click="openImagePopup(user.profilePicture)"
         />
-        <p class="hidden sm:block text-base sm:text-lg">{{ user?.name }}</p>
+        <div
+          v-else
+          class="w-12 h-12 rounded-full shadow-lg animate-pulse cursor-wait bg-black/40"
+        ></div>
+        <p v-if="!loading" class="hidden sm:block text-base sm:text-lg">
+          {{ user?.name }}
+        </p>
+        <div
+          v-else
+          class="w-20 h-12 rounded-full shadow-lg animate-pulse cursor-wait bg-black/40"
+        ></div>
         <fa :icon="['fas', 'chevron-down']" />
         <div
           v-if="showMenu"
@@ -62,6 +76,7 @@
 </template>
 
 <script>
+import { mapGetters } from 'vuex'
 export default {
   name: 'HeaderLayout',
   props: {
@@ -77,20 +92,22 @@ export default {
   data() {
     return {
       showMenu: false,
-      user: null,
+      loading: false,
     }
+  },
+  computed: {
+    ...mapGetters({
+      user: 'users/getUser',
+    }),
   },
   mounted() {
     this.getUser()
   },
   methods: {
     async getUser() {
-      const response = await this.$axios.get('/me', {
-        headers: {
-          Authorization: this.$auth.getToken('local'),
-        },
-      })
-      this.user = response.data.data
+      this.loading = true
+      await this.$store.dispatch('users/fetchMe')
+      this.loading = false
     },
     toggleMenu() {
       this.showMenu = !this.showMenu

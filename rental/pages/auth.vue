@@ -1,5 +1,5 @@
 <template>
-  <section class="min-h-screen bg-[#f5f5f5] pt-[94px] pb-10 px-10 relative">
+  <main class="min-h-screen bg-[#f5f5f5] pt-[94px] pb-10 px-10 relative">
     <div
       class="animated text-center bg-[#212942] rounded-[9px] border-t-[10px] border-t-[#79a6fe] border-b-[10px] border-b-[#79a6fe] w-[280px] sm:w-[450px] shadow-md shadow-white z-10 py-5 px-10 flex flex-col gap-5 justify-between items-center absolute left-1/2 -translate-x-1/2 -translate-y-1/2"
     >
@@ -17,7 +17,7 @@
       <register-input v-else @register="register" @submit="submitForm" />
     </div>
     <particle-js />
-  </section>
+  </main>
 </template>
 
 <script>

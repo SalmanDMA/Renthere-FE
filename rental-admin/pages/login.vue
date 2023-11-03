@@ -47,7 +47,13 @@
             </div>
           </form>
           <div class="sm:w-1/2 hidden sm:block">
-            <img :src="unlock" alt="unlock image" class="w-full" />
+            <nuxt-img
+              src="/unlock.svg"
+              alt="unlock image"
+              class="w-full"
+              :placeholder="[100, 50, 10]"
+              loading="lazy"
+            />
           </div>
         </div>
       </div>
@@ -56,8 +62,6 @@
 </template>
 
 <script>
-import unlock from '@/static/unlock.svg'
-
 export default {
   name: 'Login',
   layout: 'empty',
@@ -65,7 +69,6 @@ export default {
     return {
       email: '',
       password: '',
-      unlock,
     }
   },
   head() {

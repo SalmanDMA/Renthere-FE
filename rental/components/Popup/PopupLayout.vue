@@ -1,9 +1,14 @@
 <template>
-  <section v-if="isOpen" :class="popupClass">
+  <section
+    v-if="isOpen"
+    :class="popupClass"
+    class="p-4 sm:px-10 sm:py-4 w-full max-w-[250px] sm:max-w-md md:max-w-2xl"
+  >
     <h3 class="text-xl mb-4 text-[#333] font-bold text-center">{{ title }}</h3>
-    <form class="mb-4" @submit.prevent="saveChanges">
-      <slot></slot>
+    <form v-if="type != 'profilePage'" @submit.prevent="saveChanges">
+      <slot />
     </form>
+    <slot v-else />
     <button
       type="button"
       class="bg-transparent cursor-pointer absolute -top-8 -right-4 text-2xl border-0 text-white z-10"
@@ -26,6 +31,10 @@ export default {
       type: String,
       required: true,
     },
+    type: {
+      type: String,
+      required: true,
+    },
   },
   methods: {
     closePopup() {
@@ -40,7 +49,7 @@ export default {
 
 <style scoped>
 .popup-content {
-  @apply bg-white p-4 rounded-lg shadow-lg fixed  z-[100];
+  @apply bg-white rounded-lg shadow-lg fixed  z-[100];
 }
 .active {
   animation: scalein 0.3s ease-in-out forwards;

@@ -13,15 +13,20 @@
       >
         {{ link.text }}
       </nuxt-link>
-      <button type="button" class="sidebar-login-button" @click="handleAuth">
-        {{ buttonName }}
-        <fa v-if="token" :icon="['fas', 'right-from-bracket']" />
+      <button
+        v-if="!token"
+        type="button"
+        class="sidebar-login-button"
+        @click="handleAuth"
+      >
+        Login
       </button>
     </nav>
   </section>
 </template>
 
 <script>
+import { mapGetters } from 'vuex'
 export default {
   name: 'SidebarNavigation',
   props: {
@@ -41,14 +46,11 @@ export default {
       type: Boolean,
       required: true,
     },
-    token: {
-      type: String,
-      required: true,
-    },
-    buttonName: {
-      type: String,
-      required: true,
-    },
+  },
+  computed: {
+    ...mapGetters({
+      token: 'token/getToken',
+    }),
   },
   methods: {
     toggleSidebar() {

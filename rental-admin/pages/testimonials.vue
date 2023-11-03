@@ -34,34 +34,44 @@
               <th class="px-4 py-2">User</th>
               <th class="px-4 py-2">Car</th>
               <th class="px-4 py-2">Rating Car</th>
+              <th class="px-4 py-2">Car Testimonial</th>
               <th class="px-4 py-2">Bike</th>
               <th class="px-4 py-2">Rating Bike</th>
-              <th class="px-4 py-2">Testimonial</th>
+              <th class="px-4 py-2">Bike Testimonial</th>
               <th class="px-4 py-2">Actions</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody v-if="!loading">
             <tr
               v-for="testimonial in paginatedTestimonials"
               :key="testimonial.id"
             >
               <td class="border border-orange-400 px-4 py-2">
-                {{ testimonial.user.name }}
+                {{ testimonial?.user?.name ? testimonial?.user?.name : '-' }}
               </td>
               <td class="border border-orange-400 px-4 py-2">
-                {{ testimonial.car.name ? testimonial.car.name : '-' }}
+                {{ testimonial?.car?.name ? testimonial?.car?.name : '-' }}
               </td>
               <td class="border border-orange-400 px-4 py-2">
-                {{ testimonial.rating_car }}
+                {{ testimonial.rating_car ? testimonial.rating_car : '-' }}
               </td>
               <td class="border border-orange-400 px-4 py-2">
-                {{ testimonial.bike.name ? testimonial.bike.name : '-' }}
+                {{
+                  testimonial.carTestimonial ? testimonial.carTestimonial : '-'
+                }}
               </td>
               <td class="border border-orange-400 px-4 py-2">
-                {{ testimonial.rating_bike }}
+                {{ testimonial?.bike?.name ? testimonial?.bike?.name : '-' }}
               </td>
               <td class="border border-orange-400 px-4 py-2">
-                {{ testimonial.testimonial }}
+                {{ testimonial.rating_bike ? testimonial.rating_bike : '-' }}
+              </td>
+              <td class="border border-orange-400 px-4 py-2">
+                {{
+                  testimonial.bikeTestimonial
+                    ? testimonial.bikeTestimonial
+                    : '-'
+                }}
               </td>
 
               <td class="border border-orange-400 px-4 py-2">
@@ -82,6 +92,7 @@
               </td>
             </tr>
           </tbody>
+          <table-skeleton v-else :td="8" />
         </table>
       </div>
     </div>
@@ -98,11 +109,13 @@
     <popup-layout
       :show-modal="showModal"
       :modal-title="modalTitle"
+      :popup-class="popupClasses"
       @close="closeModal"
     >
       <popup-form
         :btn-text="editPopup ? 'Update' : 'Add'"
         :delete-popup="deletePopup"
+        type="testimonial"
         @save="saveTestimonial"
         @close="closeModal"
       >
@@ -116,19 +129,21 @@
 </template>
 
 <script>
+import { mapGetters } from 'vuex'
 import Pagination from '../components/Pagination.vue'
 import PopupForm from '../components/popup/PopupForm.vue'
+import TableSkeleton from '../components/skeleton/TableSkeleton.vue'
 export default {
   name: 'Testimonials',
-  components: { Pagination, PopupForm },
+  components: { Pagination, PopupForm, TableSkeleton },
   middleware: 'auth',
   data() {
     return {
-      testimonials: [],
       searchTerm: '',
       currentPage: 1,
       itemsPerPage: 10,
       showModal: false,
+      showAnimation: false,
       notFound: false,
       editPopup: false,
       deletePopup: false,
@@ -137,11 +152,13 @@ export default {
         userId: '',
         carId: '',
         bikeId: '',
-        testimonial: '',
-        ratingBike: 0,
-        ratingCar: 0,
+        carTestimonial: '',
+        bikeTestimonial: '',
+        ratingBike: '',
+        ratingCar: '',
       },
       testimonialIdToDelete: null,
+      loading: false,
     }
   },
   head() {
@@ -150,6 +167,14 @@ export default {
     }
   },
   computed: {
+    ...mapGetters({
+      testimonials: 'testimonials/getTestimonials',
+    }),
+    popupClasses() {
+      return this.showAnimation
+        ? 'popup-content active'
+        : 'popup-content deactive'
+    },
     filteredTestimonials() {
       if (!this.searchTerm) {
         // eslint-disable-next-line vue/no-side-effects-in-computed-properties
@@ -199,41 +224,42 @@ export default {
       this.currentPage = page
     },
     async fetchTestimonials() {
+      this.loading = true
       try {
-        const response = await this.$axios.get('/testimonials')
-        this.testimonials = response.data.data
+        await this.$store.dispatch('testimonials/fetchTestimonials')
       } catch (error) {
         console.error('An error occurred during fetching testimonials', error)
+      } finally {
+        this.loading = false
       }
     },
     closeModal() {
-      this.showModal = false
-      this.editPopup = false
-      this.editedTestimonial = {
-        userId: '',
-        carId: '',
-        bikeId: '',
-        testimonial: '',
-        ratingBike: 0,
-        ratingCar: 0,
-      }
-      this.testimonialIdToDelete = null
-      this.deletePopup = false
-    },
-    closeOverlayOnClickOutside(event) {
-      if (this.showModal) {
-        const modalContent = this.$refs.modalContent
-        if (!modalContent.contains(event.target)) {
-          this.closeModal()
+      this.showAnimation = false
+      setTimeout(() => {
+        this.showModal = false
+        this.editPopup = false
+        this.editedTestimonial = {
+          userId: '',
+          carId: '',
+          bikeId: '',
+          carTestimonial: '',
+          bikeTestimonial: '',
+          ratingBike: '',
+          ratingCar: '',
         }
-      }
+        this.testimonialIdToDelete = null
+        this.deletePopup = false
+      }, 300)
     },
     openAddTestimonialModal() {
       this.showModal = true
+      this.showAnimation = true
       this.modalTitle = 'Add Testimonial'
+      this.$store.commit('testimonials/setFalseValidation')
     },
     openEditTestimonialModal(testimonial) {
       this.showModal = true
+      this.showAnimation = true
       this.editPopup = true
       this.modalTitle = 'Edit Testimonial'
       this.editedTestimonial = {
@@ -244,6 +270,7 @@ export default {
     },
     openDeleteTestimonialModal(id) {
       this.showModal = true
+      this.showAnimation = true
       this.deletePopup = true
       this.modalTitle = 'Delete Testimonial'
       this.testimonialIdToDelete = id
@@ -283,18 +310,23 @@ export default {
     },
     async addTestimonial() {
       this.editedTestimonial.userId = Number(this.editedTestimonial.userId)
-      this.editedTestimonial.carId = Number(this.editedTestimonial.carId)
-      this.editedTestimonial.bikeId = Number(this.editedTestimonial.bikeId)
-      this.editedTestimonial.ratingBike = parseFloat(
-        this.editedTestimonial.ratingBike
-      )
-      this.editedTestimonial.ratingCar = parseFloat(
-        this.editedTestimonial.ratingCar
-      )
+      this.editedTestimonial.carId = this.editedTestimonial.carId
+        ? Number(this.editedTestimonial.carId)
+        : null
+      this.editedTestimonial.bikeId = this.editedTestimonial.bikeId
+        ? Number(this.editedTestimonial.bikeId)
+        : null
+      this.editedTestimonial.ratingBike = this.editedTestimonial.ratingBike
+        ? parseFloat(this.editedTestimonial.ratingBike)
+        : null
+
+      this.editedTestimonial.ratingCar = this.editedTestimonial.ratingCar
+        ? parseFloat(this.editedTestimonial.ratingCar)
+        : null
 
       try {
         const response = await this.$axios.post(
-          '/testimonials',
+          '/testimonials/admin',
           this.editedTestimonial,
           {
             headers: {
@@ -315,14 +347,25 @@ export default {
     async editTestimonial() {
       try {
         const response = await this.$axios.put(
-          `/testimonials${this.editedTestimonial.id}`,
+          `/testimonials/admin/${this.editedTestimonial.id}`,
           {
             userId: Number(this.editedTestimonial.userId),
-            carId: Number(this.editedTestimonial.carId),
-            bikeId: Number(this.editedTestimonial.bikeId),
-            testimonial: this.editedTestimonial.testimonial,
-            ratingBike: this.editedTestimonial.ratingBike,
-            ratingCar: this.editedTestimonial.ratingCar,
+            carId: this.editedTestimonial.carId
+              ? Number(this.editedTestimonial.carId)
+              : null,
+            bikeId: this.editedTestimonial.bikeId
+              ? Number(this.editedTestimonial.bikeId)
+              : null,
+            carTestimonial: this.editedTestimonial.carTestimonial,
+            bikeTestimonial: this.editedTestimonial.bikeTestimonial,
+            ratingBike: (this.editedTestimonial.ratingBike = this
+              .editedTestimonial.ratingBike
+              ? parseFloat(this.editedTestimonial.ratingBike)
+              : null),
+            ratingCar: (this.editedTestimonial.ratingCar = this
+              .editedTestimonial.ratingCar
+              ? parseFloat(this.editedTestimonial.ratingCar)
+              : null),
           },
           {
             headers: {

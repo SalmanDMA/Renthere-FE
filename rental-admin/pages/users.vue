@@ -39,7 +39,7 @@
               <th class="px-4 py-2">Actions</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody v-if="!loading">
             <tr v-for="user in paginatedUsers" :key="user.id">
               <td class="border border-orange-400 px-4 py-2">
                 {{ user.name }}
@@ -57,10 +57,14 @@
                 {{ user.phoneNumber }}
               </td>
               <td class="border border-orange-400 px-4 py-2">
-                <img
+                <nuxt-img
+                  v-if="user && user.profilePicture"
                   :src="user.profilePicture"
-                  alt="profile picture"
-                  class="w-10"
+                  :alt="user.name"
+                  class="w-20 cursor-pointer"
+                  :placeholder="[100, 50, 10]"
+                  loading="lazy"
+                  @click="openImagePopup(user.profilePicture)"
                 />
               </td>
               <td class="border border-orange-400 px-4 py-2">
@@ -83,6 +87,7 @@
               </td>
             </tr>
           </tbody>
+          <table-skeleton v-else :td="7" />
         </table>
       </div>
     </div>
@@ -99,9 +104,13 @@
     <popup-layout
       :show-modal="showModal"
       :modal-title="modalTitle"
+      :popup-class="popupClasses"
       @close="closeModal"
     >
+      <popup-image v-if="imagePopup" :picture="userImage" @close="closeModal" />
       <popup-form
+        v-else
+        type="user"
         :btn-text="editPopup ? 'Update' : 'Add'"
         :delete-popup="deletePopup"
         @save="saveUser"
@@ -111,6 +120,7 @@
           v-if="!deletePopup"
           :edited-user="editedUser"
           :show-input-password="editPopup"
+          @handleInput="handleInputFile"
         />
       </popup-form>
     </popup-layout>
@@ -118,22 +128,24 @@
 </template>
 
 <script>
+import { mapGetters } from 'vuex'
 import Pagination from '../components/Pagination.vue'
-import PopupForm from '../components/popup/PopupForm.vue'
+import TableSkeleton from '../components/skeleton/TableSkeleton.vue'
 export default {
   name: 'Users',
-  components: { Pagination, PopupForm },
+  components: { Pagination, TableSkeleton },
   middleware: 'auth',
   data() {
     return {
-      users: [],
       searchTerm: '',
       currentPage: 1,
       itemsPerPage: 10,
       showModal: false,
+      showAnimation: false,
       notFound: false,
       editPopup: false,
       deletePopup: false,
+      imagePopup: false,
       modalTitle: '',
       editedUser: {
         name: '',
@@ -144,6 +156,10 @@ export default {
         profilePicture: '',
       },
       userIdToDelete: null,
+      userImage: '',
+      loading: false,
+      base64Url: null,
+      previewUrl: null,
     }
   },
   head() {
@@ -152,6 +168,14 @@ export default {
     }
   },
   computed: {
+    ...mapGetters({
+      users: 'users/getUsers',
+    }),
+    popupClasses() {
+      return this.showAnimation
+        ? 'popup-content active'
+        : 'popup-content deactive'
+    },
     filteredUsers() {
       if (!this.searchTerm) {
         // eslint-disable-next-line vue/no-side-effects-in-computed-properties
@@ -191,6 +215,51 @@ export default {
     this.fetchUsers()
   },
   methods: {
+    handleInputFile(event) {
+      const file = event
+      if (file) {
+        console.log()
+        if (file.size > 1000000) {
+          throw new Error('File too large')
+        }
+
+        const reader = new FileReader()
+
+        reader.onload = () => {
+          const image = new Image()
+          image.src = reader.result
+
+          image.onload = () => {
+            const canvas = document.createElement('canvas')
+            const maxDimension = 500
+
+            let width = image.width
+            let height = image.height
+
+            if (width > maxDimension || height > maxDimension) {
+              if (width > height) {
+                height *= maxDimension / width
+                width = maxDimension
+              } else {
+                width *= maxDimension / height
+                height = maxDimension
+              }
+            }
+
+            canvas.width = width
+            canvas.height = height
+
+            const ctx = canvas.getContext('2d')
+            ctx.drawImage(image, 0, 0, width, height)
+
+            const resizedBase64Url = canvas.toDataURL('image/jpg')
+
+            this.base64Url = resizedBase64Url
+          }
+        }
+        reader.readAsDataURL(file)
+      }
+    },
     nextPage() {
       if (this.currentPage < this.totalPages) this.currentPage++
     },
@@ -201,56 +270,64 @@ export default {
       this.currentPage = page
     },
     async fetchUsers() {
+      this.loading = true
       try {
-        const response = await this.$axios.get('/users', {
-          headers: {
-            Authorization: this.$auth.getToken('local'),
-          },
-        })
-
-        this.users = response.data.data
+        await this.$store.dispatch('users/fetchUsers')
       } catch (error) {
         console.error('An error occurred during fetching users', error)
+      } finally {
+        this.loading = false
       }
     },
     closeModal() {
-      this.showModal = false
-      this.editPopup = false
-      this.editedUser = {
-        name: '',
-        email: '',
-        password: '',
-        role: 'USER',
-        address: '',
-        phoneNumber: '',
-        profilePicture: '',
-      }
-      this.userIdToDelete = null
-      this.deletePopup = false
-    },
-    closeOverlayOnClickOutside(event) {
-      if (this.showModal) {
-        const modalContent = this.$refs.modalContent
-        if (!modalContent.contains(event.target)) {
-          this.closeModal()
+      this.showAnimation = false
+      setTimeout(() => {
+        this.showModal = false
+        this.editPopup = false
+        this.editedUser = {
+          name: '',
+          email: '',
+          password: '',
+          role: 'USER',
+          address: '',
+          phoneNumber: '',
+          profilePicture: '',
         }
-      }
+        this.userIdToDelete = null
+        this.deletePopup = false
+        this.imagePopup = false
+        this.userImage = ''
+        this.base64Url = null
+        this.previewUrl = null
+      }, 300)
     },
     openAddUserModal() {
       this.showModal = true
+      this.showAnimation = true
       this.modalTitle = 'Add User'
+      this.$store.commit('users/setFalseValidation')
     },
     openEditUserModal(user) {
       this.showModal = true
       this.editPopup = true
+      this.showAnimation = true
       this.modalTitle = 'Edit User'
       this.editedUser = { ...user }
+      this.$store.commit('users/setTrueValidation')
     },
     openDeleteUserModal(id) {
       this.showModal = true
+      this.showAnimation = true
       this.deletePopup = true
       this.modalTitle = 'Delete User'
       this.userIdToDelete = id
+    },
+    openImagePopup(image) {
+      this.showModal = true
+      this.showAnimation = true
+      this.imagePopup = true
+      this.userImage = image
+      this.modalTitle = ''
     },
     async saveUser() {
       if (!this.editPopup && !this.deletePopup) {
@@ -287,15 +364,39 @@ export default {
     },
     async addUser() {
       try {
-        const response = await this.$axios.post('/users', this.editedUser, {
-          headers: {
-            Authorization: this.$auth.getToken('local'),
-          },
-        })
-        if (response.data.status === 'success') {
-          this.successToast(response.data.message)
-        } else {
-          this.failToast(response.data.message)
+        try {
+          const res = await this.$axios.post('upload/images', {
+            image: this.base64Url,
+          })
+          this.previewUrl = res.data.data.url
+        } catch (error) {
+          this.base64Url = null
+          this.previewUrl = ''
+          this.failToast(error)
+        }
+        if (
+          (this.base64Url && this.previewUrl) ||
+          this.editedUser.profilePicture
+        ) {
+          const response = await this.$axios.post(
+            '/users',
+            {
+              ...this.editedUser,
+              profilePicture: this.previewUrl
+                ? this.previewUrl
+                : this.editedUser.profilePicture,
+            },
+            {
+              headers: {
+                Authorization: this.$auth.getToken('local'),
+              },
+            }
+          )
+          if (response.data.status === 'success') {
+            this.successToast(response.data.message)
+          } else {
+            this.failToast(response.data.message)
+          }
         }
       } catch (error) {
         console.error('An error occurred during sign in', error)
@@ -304,26 +405,43 @@ export default {
     },
     async editUser() {
       try {
-        const response = await this.$axios.put(
-          `/users/${this.editedUser.id}`,
-          {
-            name: this.editedUser.name,
-            email: this.editedUser.email,
-            role: this.editedUser.role,
-            address: this.editedUser.address,
-            phoneNumber: this.editedUser.phoneNumber,
-            profilePicture: this.editedUser.profilePicture,
-          },
-          {
-            headers: {
-              Authorization: this.$auth.getToken('local'),
+        try {
+          const res = await this.$axios.post('upload/images', {
+            image: this.base64Url,
+          })
+          this.previewUrl = res.data.data.url
+        } catch (error) {
+          this.base64Url = null
+          this.previewUrl = ''
+          this.failToast(error)
+        }
+        if (
+          (this.base64Url && this.previewUrl) ||
+          this.editedUser.profilePicture
+        ) {
+          const response = await this.$axios.put(
+            `/users/${this.editedUser.id}`,
+            {
+              name: this.editedUser.name,
+              email: this.editedUser.email,
+              role: this.editedUser.role,
+              address: this.editedUser.address,
+              phoneNumber: this.editedUser.phoneNumber,
+              profilePicture: this.previewUrl
+                ? this.previewUrl
+                : this.editedUser.profilePicture,
             },
+            {
+              headers: {
+                Authorization: this.$auth.getToken('local'),
+              },
+            }
+          )
+          if (response.data.status === 'success') {
+            this.successToast(response.data.message)
+          } else {
+            this.failToast(response.data.message)
           }
-        )
-        if (response.data.status === 'success') {
-          this.successToast(response.data.message)
-        } else {
-          this.failToast(response.data.message)
         }
       } catch (error) {
         console.error('An error occurred during sign in', error)

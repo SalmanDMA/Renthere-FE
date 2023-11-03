@@ -19,6 +19,7 @@ export default {
   plugins: [
     { src: '~/plugins/vue2-google-maps.js', mode: 'client' },
     { src: '~/plugins/vue-particle.js', mode: 'client' },
+    { src: '~/plugins/snap.js', mode: 'client' },
   ],
 
   // Auto import components: https://go.nuxtjs.dev/config-components
@@ -74,6 +75,11 @@ export default {
   },
 
   auth: {
+    redirect: {
+      login: '/redirect',
+      logout: '/',
+      home: '/',
+    },
     strategies: {
       local: {
         endpoints: {
@@ -99,7 +105,17 @@ export default {
 
   env: {
     googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY,
-    baseUrl: process.env.BASE_URL
+    baseUrl: process.env.BASE_URL,
+    midtransClientKey: process.env.MIDTRANS_CLIENT_KEY
+  },
+
+  router: {
+    extendRoutes(routes, resolve) {
+      routes.push({
+        path: '*',
+        component: resolve(__dirname, 'pages/error.vue')
+      })
+    }
   },
 
   // Build Configuration: https://go.nuxtjs.dev/config-build

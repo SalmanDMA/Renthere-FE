@@ -167,17 +167,10 @@
           </p>
           <div class="flex items-center gap-3">
             <nuxt-link
-              :to="linkCars"
+              :to="linkRenthere"
               class="bg-[#333] text-white py-2 px-4 rounded-lg hover:bg-orange-400 transition-colors duration-300 ease-in-out"
             >
-              Cars
-            </nuxt-link>
-            <p class="text-gray-300 text-sm">or</p>
-            <nuxt-link
-              :to="linkBikes"
-              class="bg-[#333] text-white py-2 px-4 rounded-lg hover:bg-orange-400 transition-colors duration-300 ease-in-out"
-            >
-              Bikes
+              Rent Cars & Bikes
             </nuxt-link>
           </div>
         </div>
@@ -188,7 +181,7 @@
 
 <script>
 import lottie from 'lottie-web'
-import { linkContact, linkBikes, linkCars } from '@/helpers/linkData'
+import { linkContact, linkRenthere } from '@/helpers/linkData'
 import heroImage from '@/static/images/hero/mobil-motor.webp'
 
 export default {
@@ -197,8 +190,7 @@ export default {
     return {
       heroImage,
       linkContact,
-      linkBikes,
-      linkCars,
+      linkRenthere,
       lengtOfItems: {
         cars: 0,
         bikes: 0,

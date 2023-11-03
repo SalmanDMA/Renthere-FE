@@ -8,7 +8,7 @@
     >
       {{ message }}
       <button class="ml-2 text-white" @click="closeToast">
-        <fa :icon="['fas', 'xmark']" class="fill-current" />
+        <fa :icon="['fas', 'xmark']" class="fill-current cursor-pointer" />
       </button>
     </div>
   </div>

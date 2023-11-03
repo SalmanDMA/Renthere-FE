@@ -1,6 +1,6 @@
 # RentHere
 
-RentHere is an easy-to-use website that facilitates vehicle rentals, including cars and motorcycles (for now), in the future there may be more vehicle options and multiple branches. In this website, there are two user roles: admin and user. The admin has full CRUD (create, read, update, delete) capabilities for the following:
+RentHere is an easy-to-use website that facilitates vehicle rentals, including cars and motorcycles (for now), in the future there will probably be more vehicle options and multiple branches. In this website, there are two user roles: admin and user. The admin has full CRUD (create, read, update, delete) capabilities for the following:
 
 - User Management
 - Car Management
@@ -8,7 +8,7 @@ RentHere is an easy-to-use website that facilitates vehicle rentals, including c
 - Transaction Management
 - Testimonial Management
 
-On the other hand, registered users have the ability to create and edit transactions. However, the ability to delete transactions and proceed to payment is still under development. Visitors who are not logged in can still access certain pages on the RentHere website, such as viewing the list of available vehicles, services offered, testimonial page, contact page, and landing or home page. Access to the details and transaction pages is reserved for logged-in users only.
+On the other hand, registered users have the ability to create, edit, delete transactions, proceed to payment, and even provide testimonials on vehicles. Visitors who are not logged in can still access certain pages on the RentHere website, such as viewing the list of available vehicles, services offered, testimonial page, contact page, and landing or home page. Access to the details and transaction pages is only reserved for logged-in users.
 
 Don't hesitate any longer, visit the RentHere website and experience the convenience of renting a vehicle.
 
@@ -20,10 +20,13 @@ Don't hesitate any longer, visit the RentHere website and experience the conveni
 - Express.js
 - JWT (JSON Web Tokens)
 - Sequelize and MySQL
+- Midtrans ( Payment Gateway Demo by Sandbox )
 
 ## Notes
 
-We apologize for the current bugs and missing features, such as testimonials, transactions, and the payment process, among others. Your feedback and suggestions are greatly appreciated in our efforts to enhance the quality of the RentHere website. Your support and ideas are invaluable for the development of RentHere. Thank you!
+- We apologize for any bugs and some payment processing methods. We hope you can give us feedback and suggestions, your suggestions are appreciated to improve the quality of the RentHere website. Your support and ideas are invaluable to the development of RentHere. Thank you!
+
+- By the way, we would also like to remind you to take a look at the environment example file that we have provided, hopefully it will help your convenience in browsing the RentHere website.
 
 ## How to Use
 

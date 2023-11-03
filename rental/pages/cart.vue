@@ -2,14 +2,17 @@
 <template>
   <main class="min-h-screen bg-[#f5f5f5] pt-[94px] pb-10 px-5 sm:px-10">
     <h1 class="text-3xl font-semibold text-[#333] mb-12 text-center">
-      Cart ({{ transaction.length }} item)
+      Cart
+      <span class="text-orange-400 text-sm"
+        >({{ transaction.length }} items)</span
+      >
     </h1>
     <div class="grid grid-cols-1 md:grid-cols-6 gap-10">
       <section class="md:col-span-4">
         <div
           v-for="item in transaction.data"
           :key="item.id"
-          class="border border-[#333] px-4 py-4 pt-8 mb-4 grid grid-cols-1 lg:grid-cols-6 gap-4 rounded-lg relative"
+          class="border border-[#333] px-4 py-4 pt-8 mb-8 grid grid-cols-1 lg:grid-cols-6 gap-4 rounded-lg relative"
         >
           <div class="flex flex-col col-span-4">
             <div
@@ -85,32 +88,47 @@
             </div>
           </div>
 
-          <div class="flex gap-2 items-start col-span-2">
-            <button
-              type="button"
-              class="bg-blue-500 hover:bg-blue-600 text-white h-8 px-4 rounded-md transition duration-300"
-              @click="handleEdit(item)"
-            >
-              Edit
-            </button>
-            <p class="text-gray-500 text-lg">/</p>
-            <button
-              class="bg-red-500 hover:bg-red-600 text-white h-8 px-4 rounded-md transition duration-300"
-            >
-              Remove
-            </button>
+          <div
+            v-if="item.status !== 'completed'"
+            class="flex flex-col items-center justify-between gap-2 col-span-2"
+          >
+            <div class="flex gap-2 items-start">
+              <button
+                type="button"
+                class="bg-blue-500 hover:bg-blue-600 text-white h-8 px-4 rounded-md transition duration-300"
+                @click="handleEdit(item)"
+              >
+                Edit
+              </button>
+              <p class="text-gray-500 text-lg">/</p>
+              <button
+                class="bg-red-500 hover:bg-red-600 text-white h-8 px-4 rounded-md transition duration-300"
+                @click="handleRemove(item.id)"
+              >
+                Remove
+              </button>
+            </div>
+            <div class="mb-7">
+              <button
+                type="button"
+                class="bg-[#333] hover:bg-[#1f1f1f] text-white h-8 px-4 rounded-md transition duration-300"
+                @click="handleCheckout(item)"
+              >
+                Checkout Now
+              </button>
+            </div>
           </div>
 
           <div class="md:pl-4 absolute -top-[16px] left-0 flex gap-5">
             <p
               class="bg-[#333] rounded-md p-2 text-white text-[10px] sm:text-xs"
             >
-              Start Date: {{ new Date(item.start_date).toLocaleDateString() }}
+              Start Date: {{ new Date(item.start_date).toLocaleString() }}
             </p>
             <p
               class="bg-[#333] rounded-md p-2 text-white text-[10px] sm:text-xs"
             >
-              End Date: {{ new Date(item.end_date).toLocaleDateString() }}
+              End Date: {{ new Date(item.end_date).toLocaleString() }}
             </p>
           </div>
         </div>
@@ -160,7 +178,23 @@
       @toggleSidebar="toggleSidebar"
       @saveEdit="saveEdit"
     />
-    <overlay :show-overlay="showOverlay" @toggleSidebar="toggleSidebar" />
+    <popup-layout
+      title="Delete Item"
+      :popup-class="popupClasses"
+      :is-open="isPopupOpen"
+      type="cartPage"
+      @close="togglePopup"
+      @save="deleteTransaction"
+    >
+      <popup-delete
+        :cancel="togglePopup"
+        title="Are you sure you want to delete this transaction ?"
+      />
+    </popup-layout>
+    <overlay
+      :show-overlay="showOverlay"
+      @toggleSidebar="showSidebar ? toggleSidebar() : togglePopup()"
+    />
   </main>
 </template>
 
@@ -170,11 +204,13 @@ export default {
   data() {
     return {
       showSidebar: false,
+      isPopupOpen: false,
       showOverlay: false,
       showAnimation: false,
       transaction: {
         length: 0,
         data: [],
+        idToDelete: null,
       },
       activeIndex: -1,
       accordionItems: [
@@ -185,20 +221,30 @@ export default {
         {
           title: 'Payment',
           content:
-            'WE ACCEPT PAYMENT VIA THE FOLLOWING CREDIT CARDS: VISA, MASTERCARD, AMERICAN EXPRESS AND DISCOVER CARD. WE ALSO ACCEPT DEBIT CARDS WITH A VISA OR MASTERCARD LOGO. (STILL UNDER DEVELOPMENT) ',
+            'WE ACCEPT PAYMENT FROM VARIOUS METHODS, YOU CAN CHOOSE IT YOURSELF WHEN YOU CLICK THE CHECKOUT BUTTON. BUT IF THERE IS A PROBLEM, IT MEANS THAT THE PAYMENT IS STILL IN THE DEVELOPMENT STAGE, WE RECOMMEND THAT YOU USE THE BANK METHOD SO THAT IT IS EASIER TO USE. ',
         },
         {
           title: 'Status Transaction',
           content:
-            'in this website has 3 statuses, namely waiting for payment, completed payment and completed transaction, if you are in the first status then, you are required to pay immediately, if your second status means the system has detected that you have made a payment, and the last status indicates that you have completed the transaction or finished returning the vehicle you rented, (but because it is still in the development stage, we will do all status changes manually, please be patient o prospective customers).',
+            'in this website has 2 statuses, namely waiting for payment, and completing payment if you are in the first status then, you are required to pay immediately, if your second status indicates that you have completed the transaction or finished returning the vehicle you rented, (but because it is still in the development stage, please apologize if there are some glitches, we will fix it immediately and please report if you have difficulty on the contact page).',
         },
       ],
       editedItem: {},
     }
   },
+  head() {
+    return {
+      title: 'Cart - RentHere',
+    }
+  },
   computed: {
     sidebarClasses() {
       return this.showAnimation ? 'active' : 'deactive'
+    },
+    popupClasses() {
+      return this.showAnimation
+        ? 'popup-content active'
+        : 'popup-content deactive'
     },
   },
   mounted() {
@@ -226,6 +272,11 @@ export default {
         ...item,
         startDate: formattedDateTime,
       }
+      this.transaction.idToDelete = null
+    },
+    handleRemove(id) {
+      this.togglePopup()
+      this.transaction.idToDelete = id
     },
     successToast(message) {
       this.$store.commit('toast/setToast', {
@@ -237,8 +288,15 @@ export default {
         this.$store.commit('toast/closeToast')
       }, 3000)
       this.getTransaction()
-      this.toggleSidebar()
-      this.editedItem = {}
+      if (this.transaction.idToDelete) {
+        this.fetchTransactions()
+        this.togglePopup()
+        this.transaction.idToDelete = null
+      }
+      if (this.editedItem && this.editedItem.id) {
+        this.toggleSidebar()
+        this.editedItem = {}
+      }
     },
     failToast(message) {
       this.$store.commit('toast/setToast', {
@@ -249,6 +307,25 @@ export default {
       setTimeout(() => {
         this.$store.commit('toast/closeToast')
       }, 3000)
+    },
+    async deleteTransaction() {
+      try {
+        const response = await this.$axios.delete(
+          `/transactions/${this.transaction.idToDelete}`,
+          {
+            headers: {
+              Authorization: this.$auth.getToken('local'),
+            },
+          }
+        )
+        if (response.data.status === 'success') {
+          this.successToast(response.data.message)
+        } else {
+          this.failToast(response.data.message)
+        }
+      } catch (error) {
+        this.failToast(error)
+      }
     },
     async saveEdit(editedItem) {
       try {
@@ -290,11 +367,26 @@ export default {
       this.showSidebar = !this.showSidebar
       this.showOverlay = !this.showOverlay
     },
+    togglePopup() {
+      if (this.showAnimation) {
+        this.showAnimation = !this.showAnimation
+        setTimeout(() => {
+          this.isPopupOpen = !this.isPopupOpen
+          this.showOverlay = !this.showOverlay
+        }, 400)
+        return
+      }
+      this.showAnimation = !this.showAnimation
+      this.isPopupOpen = !this.isPopupOpen
+      this.showOverlay = !this.showOverlay
+    },
     async getTransaction() {
       try {
         const response = await this.$axios.get('/transactions')
-        console.log(response.data.data)
-        this.transaction.length = response.data.data.length
+        const filteredTransactions = response.data.data.filter(
+          (transaction) => transaction.status !== 'completed'
+        )
+        this.transaction.length = filteredTransactions.length
         this.transaction.data = response.data.data
       } catch (error) {
         console.error(error)
@@ -305,6 +397,79 @@ export default {
         this.activeIndex = -1
       } else {
         this.activeIndex = index
+      }
+    },
+
+    async handleCheckout(data) {
+      try {
+        const dataOrder = {
+          transactionId: data.id,
+          totalCost: data.total_cost,
+        }
+        const config = {
+          headers: {
+            Authorization: this.$auth.getToken('local'),
+            'Content-Type': 'application/json',
+          },
+        }
+
+        const response = await this.$axios.post('/orders', dataOrder, config)
+
+        if (response.data.status === 'success') {
+          let snapToken = response.data.data.token
+
+          // Menggunakan Snap Pay untuk proses pembayaran
+          // eslint-disable-next-line no-undef
+          Snap.pay(snapToken, {
+            onSuccess: async (result) => {
+              const response = await this.$axios.put(
+                `/transactions/${data.id}`,
+                {
+                  carId: Number(data.carId),
+                  bikeId: Number(data.bikeId),
+                  startDate: data.startDate,
+                  totalCar: Number(data.total_car),
+                  totalBike: Number(data.total_bike),
+                  rentalDuration: Number(data.rental_duration),
+                  status: 'completed',
+                },
+                {
+                  headers: {
+                    Authorization: this.$auth.getToken('local'),
+                  },
+                }
+              )
+              if (response.data.status === 'success') {
+                this.successToast(
+                  'Transaction completed. ' + response.data.message
+                )
+                console.log(result)
+                this.getTransaction()
+                snapToken = ''
+              } else {
+                this.failToast(response.data.message)
+              }
+            },
+            onPending: (result) => {
+              this.successToast(
+                'Transaction pending. ' + JSON.stringify(result)
+              )
+              snapToken = ''
+            },
+            onError: (result) => {
+              this.failToast(`Transaction failed. ${JSON.stringify(result)}`)
+              snapToken = ''
+            },
+            onClose: () => {
+              this.failToast('Transaction closed.')
+              snapToken = ''
+            },
+          })
+        } else {
+          this.failToast(response.data.message)
+        }
+      } catch (error) {
+        this.failToast(error)
       }
     },
   },

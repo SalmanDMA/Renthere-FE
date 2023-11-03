@@ -5,6 +5,7 @@
         title="Cars Showcase"
         subtitle="Find your dream car"
         search-placeholder="Search car by name here..."
+        type="car"
         :paginated-cars="paginatedCars"
         :link-cars="linkCars"
         :search-query="searchQuery"
@@ -13,6 +14,7 @@
         :card-not-found="cardNotFound"
         @category-change="handleCategoryChange"
         @search-query-change="handleSearchQueryChange"
+        @toggle-wishlist="saveWishList"
       />
       <pagination-layout
         :current-page="currentPage"
@@ -24,9 +26,9 @@
 </template>
 
 <script>
+import { mapGetters } from 'vuex'
 import { linkContact, linkCars } from '@/helpers/linkData'
 import heroImage from '@/static/images/hero/mobil-motor.webp'
-// import carsData from '@/helpers/carsDataDummy'
 
 export default {
   name: 'Cars',
@@ -35,7 +37,6 @@ export default {
       heroImage,
       linkContact,
       linkCars,
-      carsData: [],
       selectedCategory: 'All',
       searchQuery: '',
       cardNotFound: false,
@@ -49,6 +50,10 @@ export default {
     }
   },
   computed: {
+    ...mapGetters({
+      carsData: 'vehicles/getCars',
+      wishlists: 'wishlist/getWishlists',
+    }),
     paginatedCars() {
       const startIndex = (this.currentPage - 1) * this.perPage
       const endIndex = startIndex + this.perPage
@@ -109,7 +114,7 @@ export default {
   },
 
   mounted() {
-    this.getCars()
+    this.$store.dispatch('vehicles/fetchCars')
   },
   methods: {
     goToPage(page) {
@@ -123,14 +128,110 @@ export default {
     handleSearchQueryChange(newSearchQuery) {
       this.searchQuery = newSearchQuery
     },
-    async getCars() {
+    async saveWishList(carId) {
       try {
-        const response = await this.$axios.get('/cars')
-        console.log(response.data.data)
-        this.carsData = response.data.data
-        this.$store.commit('vehicles/setCars', response.data.data)
+        const findWishlistSaved = this.wishlists.find(
+          (wishlist) => wishlist.carId === carId
+        )
+        if (findWishlistSaved) {
+          await this.removeWishList(findWishlistSaved.id)
+        } else {
+          await this.addWishList(carId)
+        }
       } catch (error) {
-        console.error(error)
+        this.$store.commit('toast/setToast', {
+          message: error.message,
+          show: true,
+          backgroundColor: 'bg-red-500',
+        })
+        setTimeout(() => {
+          this.$store.commit('toast/closeToast')
+        }, 300)
+      }
+    },
+
+    async addWishList(carId) {
+      try {
+        const response = await this.$axios.post(
+          '/wishlists',
+          {
+            carId,
+            bikeId: null,
+          },
+          {
+            headers: {
+              Authorization: this.$auth.getToken('local'),
+            },
+          }
+        )
+
+        if (response.data.status === 'success') {
+          this.$store.commit('toast/setToast', {
+            message: response.data.message,
+            show: true,
+            backgroundColor: 'bg-green-500',
+          })
+          setTimeout(() => {
+            this.$store.commit('toast/closeToast')
+          }, 3000)
+          this.$store.dispatch('wishlist/fetchWishlists')
+        } else {
+          this.$store.commit('toast/setToast', {
+            message: response.data.message,
+            show: true,
+            backgroundColor: 'bg-red-500',
+          })
+          setTimeout(() => {
+            this.$store.commit('toast/closeToast')
+          }, 300)
+        }
+      } catch (error) {
+        this.$store.commit('toast/setToast', {
+          message: error.message,
+          show: true,
+          backgroundColor: 'bg-red-500',
+        })
+        setTimeout(() => {
+          this.$store.commit('toast/closeToast')
+        }, 300)
+      }
+    },
+    async removeWishList(id) {
+      try {
+        const response = await this.$axios.delete(`/wishlists/${id}`, {
+          headers: {
+            Authorization: this.$auth.getToken('local'),
+          },
+        })
+        if (response.data.status === 'success') {
+          this.$store.commit('toast/setToast', {
+            message: response.data.message,
+            show: true,
+            backgroundColor: 'bg-green-500',
+          })
+          setTimeout(() => {
+            this.$store.commit('toast/closeToast')
+          }, 3000)
+          this.$store.dispatch('wishlist/fetchWishlists')
+        } else {
+          this.$store.commit('toast/setToast', {
+            message: response.data.message,
+            show: true,
+            backgroundColor: 'bg-red-500',
+          })
+          setTimeout(() => {
+            this.$store.commit('toast/closeToast')
+          }, 300)
+        }
+      } catch (error) {
+        this.$store.commit('toast/setToast', {
+          message: error.message,
+          show: true,
+          backgroundColor: 'bg-red-500',
+        })
+        setTimeout(() => {
+          this.$store.commit('toast/closeToast')
+        }, 300)
       }
     },
   },

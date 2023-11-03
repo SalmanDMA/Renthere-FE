@@ -49,7 +49,7 @@
               <th class="px-4 py-2">Actions</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody v-if="!loading">
             <tr
               v-for="transaction in paginatedTransactions"
               :key="transaction.id"
@@ -73,22 +73,38 @@
                 {{ new Date(transaction.end_date).toLocaleString() }}
               </td>
               <td class="border border-orange-400 px-4 py-2">
-                {{ formatToIDR(transaction.price_car) }}
+                {{
+                  transaction.price_car
+                    ? formatToIDR(transaction.price_car)
+                    : '-'
+                }}
               </td>
               <td class="border border-orange-400 px-4 py-2">
-                {{ transaction.total_car }}
+                {{ transaction.total_car ? transaction.total_car : '-' }}
               </td>
               <td class="border border-orange-400 px-4 py-2">
-                {{ formatToIDR(transaction.total_amount_car) }}
+                {{
+                  transaction.total_amount_car
+                    ? formatToIDR(transaction.total_amount_car)
+                    : '-'
+                }}
               </td>
               <td class="border border-orange-400 px-4 py-2">
-                {{ formatToIDR(transaction.price_bike) }}
+                {{
+                  transaction.price_bike
+                    ? formatToIDR(transaction.price_bike)
+                    : '-'
+                }}
               </td>
               <td class="border border-orange-400 px-4 py-2">
-                {{ transaction.total_bike }}
+                {{ transaction.total_bike ? transaction.total_bike : '-' }}
               </td>
               <td class="border border-orange-400 px-4 py-2">
-                {{ formatToIDR(transaction.total_amount_bike) }}
+                {{
+                  transaction.total_amount_bike
+                    ? formatToIDR(transaction.total_amount_bike)
+                    : '-'
+                }}
               </td>
               <td class="border border-orange-400 px-4 py-2">
                 {{ formatToIDR(transaction.total_cost) }}
@@ -118,6 +134,7 @@
               </td>
             </tr>
           </tbody>
+          <table-skeleton v-else :td="16" />
         </table>
       </div>
     </div>
@@ -134,11 +151,13 @@
     <popup-layout
       :show-modal="showModal"
       :modal-title="modalTitle"
+      :popup-class="popupClasses"
       @close="closeModal"
     >
       <popup-form
         :btn-text="editPopup ? 'Update' : 'Add'"
         :delete-popup="deletePopup"
+        type="transaction"
         @save="saveTransaction"
         @close="closeModal"
       >
@@ -152,20 +171,22 @@
 </template>
 
 <script>
+import { mapGetters } from 'vuex'
 import Pagination from '../components/Pagination.vue'
 import PopupForm from '../components/popup/PopupForm.vue'
 import PopupTransaction from '../components/popup/PopupTransaction.vue'
+import TableSkeleton from '../components/skeleton/TableSkeleton.vue'
 export default {
   name: 'Transactions',
-  components: { Pagination, PopupForm, PopupTransaction },
+  components: { Pagination, PopupForm, PopupTransaction, TableSkeleton },
   middleware: 'auth',
   data() {
     return {
-      transactions: [],
       searchTerm: '',
       currentPage: 1,
       itemsPerPage: 10,
       showModal: false,
+      showAnimation: false,
       notFound: false,
       editPopup: false,
       deletePopup: false,
@@ -182,6 +203,7 @@ export default {
         rentalDuration: '',
       },
       transactionIdToDelete: null,
+      loading: false,
     }
   },
   head() {
@@ -190,6 +212,14 @@ export default {
     }
   },
   computed: {
+    ...mapGetters({
+      transactions: 'transactions/getTransactions',
+    }),
+    popupClasses() {
+      return this.showAnimation
+        ? 'popup-content active'
+        : 'popup-content deactive'
+    },
     filteredTransactions() {
       if (!this.searchTerm) {
         // eslint-disable-next-line vue/no-side-effects-in-computed-properties
@@ -249,47 +279,40 @@ export default {
       this.currentPage = page
     },
     async fetchTransactions() {
+      this.loading = true
       try {
-        const response = await this.$axios.get('/transactions/admin', {
-          headers: {
-            Authorization: this.$auth.getToken('local'),
-          },
-        })
-
-        this.transactions = response.data.data
+        await this.$store.dispatch('transactions/fetchTransactions')
       } catch (error) {
         console.error('An error occurred during fetching transaction', error)
+      } finally {
+        this.loading = false
       }
     },
     closeModal() {
-      this.showModal = false
-      this.editPopup = false
-      this.editedTransaction = {
-        userId: '',
-        startDate: '',
-        totalCar: '',
-        totalBike: '',
-        payment: '',
-        status: '',
-        carId: '',
-        bikeId: '',
-        rentalDuration: '',
-      }
-      this.transactionIdToDelete = null
-      this.deletePopup = false
-    },
-    closeOverlayOnClickOutside(event) {
-      if (this.showModal) {
-        const modalContent = this.$refs.modalContent
-        if (!modalContent.contains(event.target)) {
-          this.closeModal()
+      this.showAnimation = false
+      setTimeout(() => {
+        this.showModal = false
+        this.editPopup = false
+        this.editedTransaction = {
+          userId: '',
+          startDate: '',
+          totalCar: '',
+          totalBike: '',
+          payment: '',
+          status: '',
+          carId: '',
+          bikeId: '',
+          rentalDuration: '',
         }
-      }
+        this.transactionIdToDelete = null
+        this.deletePopup = false
+      }, 300)
     },
-
     openAddTransactionModal() {
       this.showModal = true
+      this.showAnimation = true
       this.modalTitle = 'Add Transaction'
+      this.$store.commit('transactions/setFalseValidation')
     },
     convertDateToDisplayOnInputField(originalDate) {
       const date = new Date(originalDate)
@@ -305,6 +328,7 @@ export default {
     },
     openEditTransactionModal(transaction) {
       this.showModal = true
+      this.showAnimation = true
       this.editPopup = true
       this.modalTitle = 'Edit Transaction'
       const formattedDateTime = this.convertDateToDisplayOnInputField(
@@ -320,6 +344,7 @@ export default {
     },
     openDeleteTransactionModal(id) {
       this.showModal = true
+      this.showAnimation = true
       this.deletePopup = true
       this.modalTitle = 'Delete Transaction'
       this.transactionIdToDelete = id
@@ -359,15 +384,21 @@ export default {
     },
     async addTransaction() {
       this.editedTransaction.userId = Number(this.editedTransaction.userId)
-      this.editedTransaction.carId = Number(this.editedTransaction.carId)
-      this.editedTransaction.bikeId = Number(this.editedTransaction.bikeId)
+      this.editedTransaction.carId = this.editedTransaction.carId
+        ? Number(this.editedTransaction.carId)
+        : null
+      this.editedTransaction.bikeId = this.editedTransaction.bikeId
+        ? Number(this.editedTransaction.bikeId)
+        : null
       this.editedTransaction.rentalDuration = Number(
         this.editedTransaction.rentalDuration
       )
-      this.editedTransaction.totalCar = Number(this.editedTransaction.totalCar)
-      this.editedTransaction.totalBike = Number(
-        this.editedTransaction.totalBike
-      )
+      this.editedTransaction.totalCar = this.editedTransaction.totalCar
+        ? Number(this.editedTransaction.totalCar)
+        : null
+      this.editedTransaction.totalBike = this.editedTransaction.totalBike
+        ? Number(this.editedTransaction.totalBike)
+        : null
 
       try {
         const response = await this.$axios.post(
@@ -395,11 +426,19 @@ export default {
           `/transactions/admin/${this.editedTransaction.id}`,
           {
             userId: Number(this.editedTransaction.userId),
-            carId: Number(this.editedTransaction.carId),
-            bikeId: Number(this.editedTransaction.bikeId),
+            carId: this.editedTransaction.carId
+              ? Number(this.editedTransaction.carId)
+              : null,
+            bikeId: this.editedTransaction.bikeId
+              ? Number(this.editedTransaction.bikeId)
+              : null,
             rentalDuration: Number(this.editedTransaction.rentalDuration),
-            totalCar: Number(this.editedTransaction.totalCar),
-            totalBike: Number(this.editedTransaction.totalBike),
+            totalCar: this.editedTransaction.totalCar
+              ? Number(this.editedTransaction.totalCar)
+              : null,
+            totalBike: this.editedTransaction.totalBike
+              ? Number(this.editedTransaction.totalBike)
+              : null,
             status: this.editedTransaction.status,
             payment: this.editedTransaction.payment,
             startDate: this.editedTransaction.startDate,

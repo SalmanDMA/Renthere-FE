@@ -189,8 +189,8 @@ export default {
           this.errors[inputName] = null
         }
       } else if (inputName === 'name') {
-        if (value.length < 5) {
-          this.errors[inputName] = 'Name must be at least 5 characters long'
+        if (value.length < 3) {
+          this.errors[inputName] = 'Name must be at least 3 characters long'
         } else {
           this.errors[inputName] = null
         }

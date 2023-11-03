@@ -6,7 +6,10 @@ const linkServices = '/services'
 const linkTestimonials = '/testimonials'
 const linkLogin = '/auth'
 const linkCart = '/cart'
-const linkFormData = '/form-data'
+const linkWishlist = '/wishlist'
+const linkRenthere = '/rent'
+const linkProfile = '/profile'
+const linkAccount = 'account'
 
 export {
   linkHome,
@@ -17,5 +20,8 @@ export {
   linkTestimonials,
   linkLogin,
   linkCart,
-  linkFormData,
+  linkWishlist,
+  linkRenthere,
+  linkProfile,
+  linkAccount
 }

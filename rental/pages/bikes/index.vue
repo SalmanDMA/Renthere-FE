@@ -5,6 +5,7 @@
         title="Bikes Showcase"
         subtitle="Find your dream bike"
         search-placeholder="Search bike by name here..."
+        type="bike"
         :paginated-cars="paginatedBikes"
         :link-cars="linkBikes"
         :search-query="searchQuery"
@@ -13,6 +14,7 @@
         :card-not-found="cardNotFound"
         @category-change="handleCategoryChange"
         @search-query-change="handleSearchQueryChange"
+        @toggle-wishlist="saveWishList"
       />
       <pagination-layout
         :current-page="currentPage"
@@ -24,6 +26,7 @@
 </template>
 
 <script>
+import { mapGetters } from 'vuex'
 import { linkContact, linkBikes } from '@/helpers/linkData'
 import heroImage from '@/static/images/hero/mobil-motor.webp'
 
@@ -34,7 +37,6 @@ export default {
       heroImage,
       linkContact,
       linkBikes,
-      bikesData: [],
       selectedCategory: 'All',
       searchQuery: '',
       cardNotFound: false,
@@ -45,9 +47,14 @@ export default {
   head() {
     return {
       title: 'Bikes - RentHere',
+      link: [{ rel: 'icon', type: 'image/x-icon', href: '/renthere.ico' }],
     }
   },
   computed: {
+    ...mapGetters({
+      bikesData: 'vehicles/getBikes',
+      wishlists: 'wishlist/getWishlists',
+    }),
     paginatedBikes() {
       const startIndex = (this.currentPage - 1) * this.perPage
       const endIndex = startIndex + this.perPage
@@ -110,7 +117,7 @@ export default {
   },
 
   mounted() {
-    this.getBikes()
+    this.$store.dispatch('vehicles/fetchBikes')
   },
   methods: {
     goToPage(page) {
@@ -124,14 +131,111 @@ export default {
     handleSearchQueryChange(newSearchQuery) {
       this.searchQuery = newSearchQuery
     },
-    async getBikes() {
+
+    async saveWishList(bikeId) {
       try {
-        const response = await this.$axios.get('/Bikes')
-        console.log(response.data.data)
-        this.bikesData = response.data.data
-        this.$store.commit('vehicles/setBikes', response.data.data)
+        const findWishlistSaved = this.wishlists.find(
+          (wishlist) => wishlist.bikeId === bikeId
+        )
+        if (findWishlistSaved) {
+          await this.removeWishList(findWishlistSaved.id)
+        } else {
+          await this.addWishList(bikeId)
+        }
       } catch (error) {
-        console.error(error)
+        this.$store.commit('toast/setToast', {
+          message: error.message,
+          show: true,
+          backgroundColor: 'bg-red-500',
+        })
+        setTimeout(() => {
+          this.$store.commit('toast/closeToast')
+        }, 300)
+      }
+    },
+
+    async addWishList(bikeId) {
+      try {
+        const response = await this.$axios.post(
+          '/wishlists',
+          {
+            bikeId,
+            carId: null,
+          },
+          {
+            headers: {
+              Authorization: this.$auth.getToken('local'),
+            },
+          }
+        )
+
+        if (response.data.status === 'success') {
+          this.$store.commit('toast/setToast', {
+            message: response.data.message,
+            show: true,
+            backgroundColor: 'bg-green-500',
+          })
+          setTimeout(() => {
+            this.$store.commit('toast/closeToast')
+          }, 3000)
+          this.$store.dispatch('wishlist/fetchWishlists')
+        } else {
+          this.$store.commit('toast/setToast', {
+            message: response.data.message,
+            show: true,
+            backgroundColor: 'bg-red-500',
+          })
+          setTimeout(() => {
+            this.$store.commit('toast/closeToast')
+          }, 300)
+        }
+      } catch (error) {
+        this.$store.commit('toast/setToast', {
+          message: error.message,
+          show: true,
+          backgroundColor: 'bg-red-500',
+        })
+        setTimeout(() => {
+          this.$store.commit('toast/closeToast')
+        }, 300)
+      }
+    },
+    async removeWishList(id) {
+      try {
+        const response = await this.$axios.delete(`/wishlists/${id}`, {
+          headers: {
+            Authorization: this.$auth.getToken('local'),
+          },
+        })
+        if (response.data.status === 'success') {
+          this.$store.commit('toast/setToast', {
+            message: response.data.message,
+            show: true,
+            backgroundColor: 'bg-green-500',
+          })
+          setTimeout(() => {
+            this.$store.commit('toast/closeToast')
+          }, 3000)
+          this.$store.dispatch('wishlist/fetchWishlists')
+        } else {
+          this.$store.commit('toast/setToast', {
+            message: response.data.message,
+            show: true,
+            backgroundColor: 'bg-red-500',
+          })
+          setTimeout(() => {
+            this.$store.commit('toast/closeToast')
+          }, 300)
+        }
+      } catch (error) {
+        this.$store.commit('toast/setToast', {
+          message: error.message,
+          show: true,
+          backgroundColor: 'bg-red-500',
+        })
+        setTimeout(() => {
+          this.$store.commit('toast/closeToast')
+        }, 300)
       }
     },
   },

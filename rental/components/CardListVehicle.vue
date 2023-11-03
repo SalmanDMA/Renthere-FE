@@ -7,7 +7,7 @@
         <h2 class="text-3xl font-bold text-[#333]">{{ title }}</h2>
         <p class="text-gray-500">{{ subtitle }}</p>
       </div>
-      <div class="flex items-center gap-3">
+      <div class="flex flex-wrap items-center gap-3">
         <div class="flex items-center gap-3">
           <p class="text-gray-500">Filter by Merk</p>
           <select
@@ -42,9 +42,9 @@
       <div
         v-for="car in paginatedCars"
         :key="car.id"
-        class="bg-white rounded-lg shadow-lg p-5 sm:p-10 lg:w-[300px] xl:max-w-[400px] flex flex-col items-center"
+        class="bg-white rounded-lg shadow-lg p-5 sm:p-10 w-[250px] sm:w-[300px] xl:max-w-[400px] flex flex-col items-center"
       >
-        <div>
+        <div class="relative">
           <nuxt-img
             :src="car.picture"
             :alt="car.name"
@@ -52,6 +52,29 @@
             :placeholder="[100, 50, 10]"
             loading="lazy"
           />
+          <div
+            class="absolute top-2 right-2 bg-white rounded-lg p-3 h-[40px] w-[40px] flex items-center justify-center shadow-xl"
+          >
+            <fa
+              v-if="wishlistsSaved(car.id)"
+              :icon="['fas', 'bookmark']"
+              class="cursor-pointer text-xl text-orange-400"
+              @click="handleToggleWishlist(car.id)"
+            />
+            <svg
+              v-else
+              xmlns="http://www.w3.org/2000/svg"
+              height="1em"
+              viewBox="0 0 384 512"
+              class="text-xl cursor-pointer"
+              fill="#FB923C"
+              @click="handleToggleWishlist(car.id)"
+            >
+              <path
+                d="M0 48C0 21.5 21.5 0 48 0l0 48V441.4l130.1-92.9c8.3-6 19.6-6 27.9 0L336 441.4V48H48V0H336c26.5 0 48 21.5 48 48V488c0 9-5 17.2-13 21.3s-17.6 3.4-24.9-1.8L192 397.5 37.9 507.5c-7.3 5.2-16.9 5.9-24.9 1.8S0 497 0 488V48z"
+              />
+            </svg>
+          </div>
         </div>
         <div class="mb-4 w-full">
           <p class="text-right text-gray-600 text-sm">
@@ -74,6 +97,7 @@
 </template>
 
 <script>
+import { mapGetters } from 'vuex'
 export default {
   name: 'VehicleList',
   props: {
@@ -113,6 +137,10 @@ export default {
       type: String,
       default: '',
     },
+    type: {
+      type: String,
+      default: '',
+    },
   },
   data() {
     return {
@@ -120,12 +148,27 @@ export default {
       localSelectedCategory: this.selectedCategory,
     }
   },
+  computed: {
+    ...mapGetters({
+      wishlists: 'wishlist/getWishlists',
+    }),
+  },
   methods: {
     emitCategoryChange() {
       this.$emit('category-change', this.localSelectedCategory)
     },
     emitSearchQueryChange() {
       this.$emit('search-query-change', this.localSearchQuery)
+    },
+    handleToggleWishlist(vehicleId) {
+      this.$emit('toggle-wishlist', vehicleId)
+    },
+    wishlistsSaved(vehicleId) {
+      if (this.type === 'bike') {
+        return this.wishlists.find((wishlist) => wishlist.bikeId === vehicleId)
+      } else {
+        return this.wishlists.find((wishlist) => wishlist.carId === vehicleId)
+      }
     },
   },
 }

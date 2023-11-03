@@ -1,5 +1,5 @@
 <template>
-  <section
+  <main
     class="min-h-screen bg-[#f5f5f5] pt-[94px] sm:pt-[65px] pb-10 px-10 sm:px-0"
   >
     <div class="relative">
@@ -90,7 +90,7 @@
       </h2>
       <office-location />
     </div>
-  </section>
+  </main>
 </template>
 
 <script>
